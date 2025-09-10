@@ -22,6 +22,7 @@ const raleway = Raleway({
 });
 
 interface FormData {
+  applicationId: string;
   applicationDetails: string;
   previousVisaDetails: string;
   uciNumber: string;
@@ -159,6 +160,7 @@ export default function Form() {
   const [page, setPage] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<FormData>({
+    applicationId: "",
     applicationDetails: "",
     previousVisaDetails: "",
     uciNumber: "",
@@ -620,34 +622,104 @@ export default function Form() {
   const user = useSelector((state: any) => state.auth.user);
   const userId = user?._id;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
+  // const handleSubmit = async (e: React.FormEvent) => {
+  //   e.preventDefault();
+  //   setIsSubmitting(true);
     
-    try {
-      // 1. Submit the form data
-      const res = await axios.post(
-        "http://localhost:3000/api/applicant-form",
+  //   try {
+  //     // 1. Submit the form data
+  //     const res = await axios.post(
+  //       "http://localhost:3000/api/applicant-form",
+  //       { ...formData, userId },
+  //       {
+  //         headers: { "Content-Type": "application/json" },
+  //         withCredentials: true,
+  //       }
+  //     );     
+  //     console.log(res.data) ;
+  //      const { applicationId } = res.data.applicant; 
+  //      console.log(applicationId) ; 
+
+  // if (!applicationId) {
+  //   throw new Error("No applicationId returned from backend");
+  // }
+
+  
+  //     // 2. Update the tracker to mark form as submitted
+  //     try {
+  //       await axios.patch(
+  // `/api/tracker/${userId}/${applicationId}`, // <--- fix here
+  //         {
+  //           field: "formFilling",
+  //           value: true
+  //         },
+  //         {
+  //           headers: { "Content-Type": "application/json" },
+  //           withCredentials: true,
+  //         }
+  //       );
+  //     } catch (trackerError) {
+  //       console.error("Failed to update tracker:", trackerError);
+  //       // You might want to handle this error differently
+  //     }
+  
+  //     // 3. Redirect after successful submission
+  //     router.push("/home");
+  //   } catch (error: any) {
+  //     console.error("Submission error:", error);
+  //   } finally {
+  //     setIsSubmitting(false);
+  //   }
+  // };
+
+
+
+  const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setIsSubmitting(true);
+  
+  try {
+    let applicationId = formData.applicationId; // If you have this field in your formData
+    let res;
+    
+    if (applicationId) {
+      // Update existing application using PATCH
+      res = await axios.patch(
+        `/api/applicant-form/${userId}`, // Your PATCH endpoint
+        { 
+          ...formData, 
+          userId,
+          applicationId // Include applicationId in the request body
+        },
+        {
+          headers: { "Content-Type": "application/json" },
+          withCredentials: true,
+        }
+      );
+    } else {
+      // Create new application using POST
+      res = await axios.post(
+        "/api/applicant-form",
         { ...formData, userId },
         {
           headers: { "Content-Type": "application/json" },
           withCredentials: true,
         }
-      );     
-      console.log(res.data) ;
-       const { applicationId } = res.data.applicant; 
-       console.log(applicationId) ; 
-
-  if (!applicationId) {
-    throw new Error("No applicationId returned from backend");
-  }
-
-  
-      // 2. Update the tracker to mark form as submitted
+      );
+      
+      // Get the applicationId from the response for new applications
+      applicationId = res.data.applicant.applicationId;
+    }
+    
+    console.log("Response data:", res.data);
+    
+    // Update the tracker to mark form as submitted
+    if (applicationId) {
       try {
         await axios.patch(
-  `/api/tracker/${userId}/${applicationId}`, // <--- fix here
+          `/api/tracker/${userId}`,
           {
+            applicationId: applicationId,
             field: "formFilling",
             value: true
           },
@@ -656,20 +728,22 @@ export default function Form() {
             withCredentials: true,
           }
         );
+        console.log("Tracker updated successfully");
       } catch (trackerError) {
         console.error("Failed to update tracker:", trackerError);
-        // You might want to handle this error differently
+        // Continue even if tracker update fails
       }
-  
-      // 3. Redirect after successful submission
-      router.push("/home");
-    } catch (error: any) {
-      console.error("Submission error:", error);
-    } finally {
-      setIsSubmitting(false);
     }
-  };
 
+    // Redirect after successful submission
+    router.push("/home");
+  } catch (error: any) {
+    console.error("Submission error:", error);
+    alert("Failed to submit form. Please try again.");
+  } finally {
+    setIsSubmitting(false);
+  }
+};
   return (
     <div style={{ fontFamily: raleway.style.fontFamily }} className="w-full text-gray-500">
       <Navbar2 />
