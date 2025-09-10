@@ -394,10 +394,15 @@
             notes: { type: String },
         },
 
-        declaration: {
-            signedDate: { type: String },
-            signature: { type: String },
-        },
+    declaration: {
+      signedDate: { type: String },
+      signature: { type: String }
+    }
+  },
+  {
+    timestamps: true
+  }
+);
 
     }, {
         timestamps: true // optional: tracks createdAt & updatedAt
